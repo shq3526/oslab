@@ -221,6 +221,40 @@ x/6i $pc
 反汇编显示入口代码先设置 `sp=bootstacktop`，（0x80200000-0x80200008）再用尾调用跳到 `kern_init`(0x80200008-0x8020000a)
 
 ![alt text](image/image-9.png)
+```c
+//kern/init/entry.S 部分
+=> 0x80200000 <kern_entry>:
+   auipc   sp,0x3
+   // 这是源码 `la sp, bootstacktop` 伪指令被翻译成的真实指令之一。
+   // AUIPC (Add Upper Immediate to PC) 指令，用于加载 `bootstacktop` 地址的高位部分到 sp 寄存器。
+
+   0x80200004 <kern_entry+4>:
+   mv      sp,sp
+   // 这是一个 NOP (No Operation) 空操作指令 (等同于 addi sp, sp, 0)。
+   // 它本身不做任何事，可能是编译器为了指令对齐或其他目的而生成的。
+   // `la` 伪指令通常会展开为 `auipc` 和 `addi`，这里是因为地址计算的特殊性被优化了。
+
+   0x80200008 <kern_entry+8>:
+   j       0x8020000a <kern_init>
+   // 这是源码 `tail kern_init` 伪指令的实现。
+   // J (Jump) 指令，无条件跳转到 `kern_init` 函数的入口地址，完成从汇编到 C 代码的交接。
+
+//kern/init/init.c 部分 (kern_init 函数的开头)
+
+   0x8020000a <kern_init>:
+   auipc   a0,0x3
+   
+   0x8020000e <kern_init+4>:
+   addi    a0,a0,-2
+   // 以上两条指令 (auipc + addi) 共同构成了 `la a0, <某个地址>` 的功能。
+   // 它们正在加载一个地址到 `a0` 寄存器。`a0` 是 RISC-V 中用于传递第一个函数参数的寄存器。
+   // 这是在为调用 `memset(edata, ...)`准备第一个参数 (目标地址或字符串地址)。
+
+   0x80200012 <kern_init+8>:
+   auipc   a2,0x3
+   // 这条指令正在加载另一个地址的高位部分到 `a2` 寄存器。
+   // `a2` 是传递第三个函数参数的寄存器。在为 `memset(edata, 0, end - edata)` 准备第三个参数 `end - edata` 的值。
+```
 
 再次输入`c`执行，debug输出以下内容：
 
@@ -248,39 +282,7 @@ PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
 ```
 
 
-接着输入指令`break kern_init`，输出指向了之前显示为`<kern_init>`的地址`0x8020000c`
 
-```assembly
-Breakpoint 2 at 0x8020000c: file kern/init/init.c, line 8.
-```
-
-输入`c`，接着输入`disassemble kern_init`查看反汇编代码：
-
-```assembly
-0x000000008020000c <+0>:    auipc   a0,0x3          # a0 = pc + (0x3 << 12)，即a0 = 0x8020000c + 0x3000 = 0x8020300c
-0x0000000080200010 <+4>:    addi    a0,a0,-4        # a0 = a0 - 4，即a0 = 0x8020300c - 4 = 0x80203008
-0x0000000080200014 <+8>:    auipc   a2,0x3          # a2 = pc + (0x3 << 12)，即a2 = 0x80200014 + 0x3000 = 0x80203014
-0x0000000080200018 <+12>:   addi    a2,a2,-12       # a2 = a2 - 12，即a2 = 0x80203014 - 12 = 0x80203002
-0x000000008020001c <+16>:   addi    sp,sp,-16       # sp = sp - 16 (在堆栈上分配16字节的空间)
-0x000000008020001e <+18>:   li      a1,0            # a1 = 0 (立即加载0到a1寄存器)
-0x0000000080200020 <+20>:   sub     a2,a2,a0        # a2 = a2 - a0，即a2 = 0x80203002 - 0x80203008 = -6
-0x0000000080200022 <+22>:   sd      ra,8(sp)        # 将返回地址(ra)存储到堆栈的sp+8位置
-0x0000000080200024 <+24>:   jal     ra,0x802004ce <memset>  # 跳转到memset函数，并设置返回地址(ra)
-0x0000000080200028 <+28>:   auipc   a1,0x0          # a1 = pc + (0x0 << 12)，即a1 = 0x80200028
-0x000000008020002c <+32>:   addi    a1,a1,1208      # a1 = a1 + 1208，即a1 = 0x80200028 + 1208 = 0x802004e0
-0x0000000080200030 <+36>:   auipc   a0,0x0          # a0 = pc + (0x0 << 12)，即a0 = 0x80200030
-0x0000000080200034 <+40>:   addi    a0,a0,1232      # a0 = a0 + 1232，即a0 = 0x80200030 + 1232 = 0x80200500
-0x0000000080200038 <+44>:   jal     ra,0x80200058 <cprintf> # 跳转到cprintf函数，并设置返回地址(ra)
-0x000000008020003c <+48>:   j       0x8020003c <kern_init+48>  # 跳转到地址0x8020003c处的指令
-```
-
-最后一个指令是`j 0x8020003c <kern_init+48>`，也就是代码会在这里一直循环下去。
-
-输入`c`，debug输出：
-
-```
-(THU.CST) os is loading ...
-```
 ## 重要的知识点与操作系统原理的对应关系
 
 ### 1. 内核启动与程序入口（Kernel Boot Process & Entry Point）
