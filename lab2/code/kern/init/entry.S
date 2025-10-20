@@ -12,6 +12,9 @@ kern_entry:
     la t0, boot_dtb
     sd a1, 0(t0)
 
+    #设置虚拟内存管理，将三级页表的物理地址和Sv39模式位写入satp寄存器，
+    #以建立内核的虚拟内存空间，为之后建立分页机制的过程做一个准备
+
     #获取 boot_page_table_sv39 的虚拟地址 ( t0 )。
 
     #计算其物理地址：pa = va - offset ( sub t0, t0, t1 )。
@@ -26,16 +29,17 @@ kern_entry:
     li      t1, 0xffffffffc0000000 - 0x80000000
     # t0 减去虚实映射偏移量 0xffffffff40000000，变为三级页表的物理地址
     sub     t0, t0, t1
-    # t0 >>= 12，变为三级页表的物理页号
+    # t0 >>= 12，变为三级页表的物理页号，物理地址右移12位抹除低12位偏移位后得到物理页号
     srli    t0, t0, 12
 
     # t1 := 8 << 60，设置 satp 的 MODE 字段为 Sv39
     li      t1, 8 << 60
-    # 将刚才计算出的预设三级页表物理页号附加到 satp 中
+    # 按位或操作把satp的MODE字段，高1000后面全0，计算出的预设三级页表物理页号附加到 satp 中
     or      t0, t0, t1
     # 将算出的 t0(即新的MODE|页表基址物理页号) 覆盖到 satp 中
     csrw    satp, t0
-    # 使用 sfence.vma 指令刷新 TLB
+    # 使用 sfence.vma 指令刷新 TLB。
+    #不加参数， sfence.vma 会刷新整个 TLB 。加上一个虚拟地址，只会刷新这个虚拟地址的映射
     sfence.vma
     # 从此，我们给内核搭建出了一个完美的虚拟内存空间！
     #nop # 可能映射的位置有些bug。。插入一个nop

@@ -48,21 +48,20 @@ typedef uintptr_t size_t;
 typedef size_t ppn_t;
 
 /* *
- * Rounding operations (efficient when n is a power of 2)
- * Round down to the nearest multiple of n
+ 取整操作（当 n 是 2 的幂次方时很高效）。向下取整到最接近的 n 的倍数
  * */
 #define ROUNDDOWN(a, n) ({                                          \
             size_t __a = (size_t)(a);                               \
             (typeof(a))(__a - __a % (n));                           \
         })
 
-/* Round up to the nearest multiple of n */
+/* 向上取整到最接近的 n 的倍数。 */
 #define ROUNDUP(a, n) ({                                            \
             size_t __n = (size_t)(n);                               \
             (typeof(a))(ROUNDDOWN((size_t)(a) + __n - 1, __n));     \
         })
 
-/* Return the offset of 'member' relative to the beginning of a struct type */
+/*  返回成员'member'相对于结构体类型起始位置的偏移量。 */
 #define offsetof(type, member)                                      \
     ((size_t)(&((type *)0)->member))
 
@@ -71,6 +70,7 @@ typedef size_t ppn_t;
  * @ptr:    a struct pointer of member
  * @type:   the type of the struct this is embedded in
  * @member: the name of the member within the struct
+ * to_struct - 从一个指针获取结构体。@ptr：成员的结构体指针。@type：这个成员所在的结构体的类型。@member：结构体内成员的名称。
  * */
 #define to_struct(ptr, type, member)                               \
     ((type *)((char *)(ptr) - offsetof(type, member)))

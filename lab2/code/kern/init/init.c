@@ -25,6 +25,10 @@ void print_kerninfo(void) {
             (end - (char*)kern_init + 1023) / 1024);
 }
 
+/* 
+        kern_init函数在完成一些输出并对lab1实验结果的检查后，
+        将进入物理内存管理初始化的工作，调用pmm_init函数完成物理内存的管理
+*/
 int kern_init(void) {
     extern char edata[], end[];
     memset(edata, 0, end - edata);

@@ -1,5 +1,6 @@
 #include <default_pmm.h>
 #include <best_fit_pmm.h>
+#include <buddy_system_pmm.h>
 #include <defs.h>
 #include <error.h>
 #include <memlayout.h>
@@ -20,7 +21,7 @@ size_t npage = 0;
 //   系统中物理页的总数（即物理内存大小 / 每页大小）
 
 // the kernel image is mapped at VA=KERNBASE and PA=info.base
-uint64_t va_pa_offset;  
+uint64_t va_pa_offset;
 //   VA-PA 偏移量，用于虚拟地址和物理地址的相互转换
 
 // memory starts at 0x80000000 in RISC-V
@@ -45,8 +46,9 @@ static void check_alloc_page(void);
 
 // init_pmm_manager - initialize a pmm_manager instance
 static void init_pmm_manager(void) {
-    pmm_manager = &best_fit_pmm_manager;  
-    //   指定当前使用的物理内存分配算法为 best-fit（最佳适应）
+    //pmm_manager = &best_fit_pmm_manager;
+    pmm_manager = &buddy_system_pmm_manager;
+    //   指定当前使用的物理内存分配算法为 best-fit
     cprintf("memory management: %s\n", pmm_manager->name);  
     //   打印当前选用的内存管理器名称
     pmm_manager->init();  
@@ -78,7 +80,8 @@ size_t nr_free_pages(void) {
     return pmm_manager->nr_free_pages();  
     //   返回当前空闲页的数量（不乘以页大小）
 }
-
+/*将页表内容进行初始化。首先，设置虚拟到物理地址的偏移，然后规定
+物理内存的开始地址和结束地址，以及大小。然后打印物理内存的映射信息。*/
 static void page_init(void) {
     va_pa_offset = PHYSICAL_MEMORY_OFFSET;  
     //   初始化虚拟地址与物理地址之间的偏移量
@@ -131,14 +134,14 @@ static void page_init(void) {
     }
 }
 
-/* pmm_init - initialize the physical memory management */
+/* pmm_init - initialize the physical memory management 初始化物理内存管理*/
 void pmm_init(void) {
     // We need to alloc/free the physical memory (granularity is 4KB or other size).
     // So a framework of physical memory manager (struct pmm_manager)is defined in pmm.h
     // First we should init a physical memory manager(pmm) based on the framework.
     // Then pmm can alloc/free the physical memory.
     // Now the first_fit/best_fit/worst_fit/buddy_system pmm are available.
-    //   上面注释解释了物理内存管理的通用框架，支持多种算法
+    //   上面注释解释了物理内存管理的通用框架，支持多种算法，
     init_pmm_manager();  
     //   选择并初始化具体的物理内存管理算法（此处为 Best-Fit）
 
