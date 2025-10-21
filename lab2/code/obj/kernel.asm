@@ -2213,7 +2213,7 @@ ffffffffc02011be:	638c                	ld	a1,0(a5)
     }
 }
 
-/* pmm_init - initialize the physical memory management */
+/* pmm_init - initialize the physical memory management 初始化物理内存管理*/
 void pmm_init(void) {
 ffffffffc02011c0:	7179                	addi	sp,sp,-48
 ffffffffc02011c2:	f022                	sd	s0,32(sp)
@@ -2403,14 +2403,14 @@ ffffffffc0201340:	e83fe0ef          	jal	ra,ffffffffc02001c2 <__panic>
     uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * (npage - nbase));
 ffffffffc0201344:	00001617          	auipc	a2,0x1
 ffffffffc0201348:	e8c60613          	addi	a2,a2,-372 # ffffffffc02021d0 <buddy_system_pmm_manager+0xc8>
-ffffffffc020134c:	07b00593          	li	a1,123
+ffffffffc020134c:	07c00593          	li	a1,124
 ffffffffc0201350:	00001517          	auipc	a0,0x1
 ffffffffc0201354:	e2850513          	addi	a0,a0,-472 # ffffffffc0202178 <buddy_system_pmm_manager+0x70>
 ffffffffc0201358:	e6bfe0ef          	jal	ra,ffffffffc02001c2 <__panic>
         panic("DTB memory info not available");  
 ffffffffc020135c:	00001617          	auipc	a2,0x1
 ffffffffc0201360:	dfc60613          	addi	a2,a2,-516 # ffffffffc0202158 <buddy_system_pmm_manager+0x50>
-ffffffffc0201364:	05c00593          	li	a1,92
+ffffffffc0201364:	05d00593          	li	a1,93
 ffffffffc0201368:	00001517          	auipc	a0,0x1
 ffffffffc020136c:	e1050513          	addi	a0,a0,-496 # ffffffffc0202178 <buddy_system_pmm_manager+0x70>
 ffffffffc0201370:	e53fe0ef          	jal	ra,ffffffffc02001c2 <__panic>
@@ -2418,7 +2418,7 @@ ffffffffc0201370:	e53fe0ef          	jal	ra,ffffffffc02001c2 <__panic>
 ffffffffc0201374:	86ae                	mv	a3,a1
 ffffffffc0201376:	00001617          	auipc	a2,0x1
 ffffffffc020137a:	e5a60613          	addi	a2,a2,-422 # ffffffffc02021d0 <buddy_system_pmm_manager+0xc8>
-ffffffffc020137e:	09f00593          	li	a1,159
+ffffffffc020137e:	0a000593          	li	a1,160
 ffffffffc0201382:	00001517          	auipc	a0,0x1
 ffffffffc0201386:	df650513          	addi	a0,a0,-522 # ffffffffc0202178 <buddy_system_pmm_manager+0x70>
 ffffffffc020138a:	e39fe0ef          	jal	ra,ffffffffc02001c2 <__panic>
