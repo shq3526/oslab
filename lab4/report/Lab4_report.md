@@ -21,21 +21,18 @@ alloc_proc函数（位于kern/process/proc.c中）负责分配并返回一个新
 我们首先在 `proc.c` 的 `alloc_proc` 函数中查看 `proc_struct` 结构需要初始化的字段（如注释所示）：
 
 ```c
-         /*
-         * below fields in proc_struct need to be initialized
-         * enum proc_state state;                      // Process state
-         * int pid;                                    // Process ID
-         * int runs;                                   // the running times of Proces
-         * uintptr_t kstack;                           // Process kernel stack
-         * volatile bool need_resched;                 // bool value: need to be rescheduled to release CPU?
-         * struct proc_struct *parent;                 // the parent process
-         * struct mm_struct *mm;                       // Process's memory management field
-         * struct context context;                     // Switch here to run process
-         * struct trapframe *tf;                       // Trap frame for current interrupt
-         * uintptr_t pgdir;                            // the base addr of Page Directroy Table(PDT)
-         * uint32_t flags;                             // Process flag
-         * char name[PROC_NAME_LEN + 1];               // Process name
-         */
+proc->state = PROC_UNINIT;          // 状态初始化为未初始化
+proc->pid = -1;                     // PID 初始化为 -1 (无效值)
+proc->runs = 0;                     // 运行时间/次数初始化为 0
+proc->kstack = 0;                   // 内核栈地址初始化为 0 (稍后在 setup_kstack 中分配)
+proc->need_resched = 0;             // 刚创建时不急于抢占 CPU
+proc->parent = NULL;                // 父进程指针初始化为空
+proc->mm = NULL;                    // 内存管理结构 (内核线程不需要 mm，因为它们直接使用内核空间)
+memset(&(proc->context), 0, sizeof(struct context)); // 极重要：清零上下文结构
+proc->tf = NULL;                    // 中断帧指针初始化为空 (将在 copy_thread 中设置)
+proc->pgdir = boot_pgdir_pa;        // 页目录表基址：默认使用内核页表 (重要！否则无法访问内核代码)
+proc->flags = 0;                    // 标志位清零
+memset(&(proc->name), 0, PROC_NAME_LEN + 1); // 进程名清零
 ```
 
 我们需要做的就是将这些变量进行初始化。
@@ -45,34 +42,39 @@ alloc_proc函数（位于kern/process/proc.c中）负责分配并返回一个新
 我们的设计如下所示：
 
 ```c
+// alloc_proc - 分配一个 proc_struct 结构并初始化所有字段
+// 这是一个工厂函数，负责生产一个“干净”的进程控制块。
+// 注意：它只分配 PCB 本身的内存，不分配内核栈或页表等资源。
 static struct proc_struct *
 alloc_proc(void)
 {
     struct proc_struct *proc = kmalloc(sizeof(struct proc_struct));
     if (proc != NULL)
     {
-        // LAB4:EXERCISE1 YOUR CODE
+        // LAB4:EXERCISE1 2312220
         /*
-         * below fields in proc_struct need to be initialized
-         * enum proc_state state;                      // Process state
-...
-         * char name[PROC_NAME_LEN + 1];               // Process name
+         * 设计思路：
+         * kmalloc 分配的内存包含未定义的垃圾数据，因此必须逐个字段初始化。
+         * 对于指针，初始化为 NULL；对于数值，初始化为 0 或特定初始值。
+         * * 关键字段说明：
+         * - state: 初始状态必须是 UNINIT，防止被调度器错误调度。
+         * - pid: -1 表示该进程尚未分配有效 ID。
+         * - cr3/pgdir: 内核线程共享内核页表，因此指向 boot_pgdir_pa。
+         * - context: 必须清零，否则 switch_to 时会从寄存器加载垃圾数据导致崩溃。
          */
-        proc->state = PROC_UNINIT;          // Process state
-        proc->pid = -1;                     // Process ID
-        proc->runs = 0;                     // the running times of Proces
-        proc->kstack = 0;                   // Process kernel stack
-        proc->need_resched = 0;             // bool value: need to be rescheduled
-        proc->parent = NULL;                // the parent process
-        proc->mm = NULL;                    // Process's memory management field
-        memset(&(proc->context), 0, sizeof(struct context)); // Switch here to run process
-        proc->tf = NULL;                    // Trap frame for current interrupt
-        // 注意: 目标代码 (RISC-V) 使用 pgdir, 参考代码 (x86) 使用 cr3
-        // 我们使用目标代码的变量
-        proc->pgdir = boot_pgdir_pa;        // the base addr of Page Directroy Table(PDT)
-        proc->flags = 0;                    // Process flag
-        // 目标代码中 name 数组大小为 PROC_NAME_LEN + 1
-        memset(&(proc->name), 0, PROC_NAME_LEN + 1); // Process name
+         
+        proc->state = PROC_UNINIT;          // 状态初始化为未初始化
+        proc->pid = -1;                     // PID 初始化为 -1 (无效值)
+        proc->runs = 0;                     // 运行时间/次数初始化为 0
+        proc->kstack = 0;                   // 内核栈地址初始化为 0 (稍后在 setup_kstack 中分配)
+        proc->need_resched = 0;             // 刚创建时不急于抢占 CPU
+        proc->parent = NULL;                // 父进程指针初始化为空
+        proc->mm = NULL;                    // 内存管理结构 (内核线程不需要 mm，因为它们直接使用内核空间)
+        memset(&(proc->context), 0, sizeof(struct context)); // 极重要：清零上下文结构
+        proc->tf = NULL;                    // 中断帧指针初始化为空 (将在 copy_thread 中设置)
+        proc->pgdir = boot_pgdir_pa;        // 页目录表基址：默认使用内核页表 (否则无法访问内核代码)
+        proc->flags = 0;                    // 标志位清零
+        memset(&(proc->name), 0, PROC_NAME_LEN + 1); // 进程名清零
     }
     return proc;
 }
@@ -196,7 +198,7 @@ copy_thread(struct proc_struct *proc, uintptr_t esp, struct trapframe *tf)
 * `proc->tf->gpr.a0` 被设置为 0，以便子进程（线程）知道自己是子进程。
 * 新线程的 `context.ra` 被设置为 `forkret`，在 `switch_to` 首次恢复后，会跳转到 `forkret`，`forkret` 再调用 `forkrets`，最终通过 `__trapret` 从 `tf` 中恢复状态，跳转到 `epc` (`kernel_thread_entry`) 开始执行。
 
-**`trapframe` 结构分析**（定义不在 `trap.h` 中）
+**`trapframe` 结构分析**（定义在 `trap.h` 中）
 ```c
 // 32个通用寄存器 (gpr)
 struct pushregs
@@ -289,55 +291,70 @@ struct trapframe {
 我们在 `do_fork` 函数中严格按照指导书给出的 7 步顺序实现了内核线程的创建，核心代码及注释如下：
 
 ```c
-int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
+int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
+{
     int ret = -E_NO_FREE_PROC;
     struct proc_struct *proc;
-    if (nr_process >= MAX_PROCESS) {
+    
+    // 1. 检查全局进程数量限制
+    if (nr_process >= MAX_PROCESS)
+    {
         goto fork_out;
     }
     ret = -E_NO_MEM;
 
-    // 1. 调用 alloc_proc 分配并初始化进程控制块
+    // LAB4:EXERCISE2 2312580 2312220
+    /*
+     * 实现思路：
+     * 1. 分配内存 (alloc_proc)
+     * 2. 分配资源 (内核栈 setup_kstack, 内存 copy_mm)
+     * 3. 设置执行现场 (copy_thread)
+     * 4. 纳入管理 (hash_proc, list_add)
+     * 5. 唤醒执行 (wakeup_proc)
+     */
+
+    // 1. 调用 alloc_proc 分配并初始化一个 proc_struct
+    // 此时得到了一个空的 PCB。
     if ((proc = alloc_proc()) == NULL) {
         goto fork_out;
     }
-    proc->parent = current;                          // 设置父进程为当前进程
 
-    // 2. 为新进程分配内核栈（2 个连续页，16KB）
+    // 2. 调用 setup_kstack 为子进程分配内核栈
+    // 没有内核栈，进程无法处理中断或进行函数调用。
     if (setup_kstack(proc) != 0) {
         goto bad_fork_cleanup_proc;
     }
 
-    // 3. 复制内存管理信息（本实验中内核线程共享内核地址空间，无需复制）
-    //    copy_mm 中断言 current->mm == NULL，直接返回 0
+    // 3. 调用 copy_mm 复制或共享内存管理结构
+    // Lab 4 中此函数为空，直接返回。
     if (copy_mm(clone_flags, proc) != 0) {
         goto bad_fork_cleanup_kstack;
     }
 
-    // 4. 复制线程执行上下文：中断帧 + 进程上下文
-    //    将父进程的中断帧复制到子进程内核栈顶，并设置首次执行路径
+    // 4. 调用 copy_thread 设置 trapframe 和 context
+    // 这步决定了进程被调度后从哪里开始执行。
     copy_thread(proc, stack, tf);
 
-    // 5. 将新进程插入全局进程链表和哈希表，便于查找与调度
-    bool intr_flag;
-    local_intr_save(intr_flag);
-    {
-        proc->pid = get_pid();       // 分配唯一 pid
-        hash_proc(proc);             // 插入 pid 哈希表
-        list_add(&proc_list, &(proc->list_link));  // 插入全局进程链表
-        nr_process++;                // 全局进程数加 1
-    }
-    local_intr_restore(intr_flag);
+    // 5. 将新进程加入全局列表
+    // 这里没有加锁，其实在并发环境下是不安全的 (题目要求如此，但实际内核开发需要 local_intr_save)。
+    proc->pid = get_pid(); // 获取唯一的 PID
+    hash_proc(proc);       // 加入哈希表，以便通过 PID 查找
+    list_add(&proc_list, &(proc->list_link)); // 加入全局链表，用于调度和统计
+    nr_process++;          // 进程总数 +1
 
-    // 6. 将新进程状态设为就绪，加入运行队列
+    // 6. 唤醒新进程
+    // 将状态设置为 PROC_RUNNABLE。
+    // 注意：此时进程还没运行，只是告诉调度器“我可以跑了”。
     wakeup_proc(proc);
 
-    // 7. 返回子进程 pid
+    // 7. 返回新进程的 PID
     ret = proc->pid;
 
 fork_out:
     return ret;
 
+// 错误处理路径：
+// 如果中间某步失败，必须释放之前分配的所有资源，防止内存泄漏。
 bad_fork_cleanup_kstack:
     put_kstack(proc);
 bad_fork_cleanup_proc:
@@ -421,28 +438,47 @@ proc_run用于将指定的进程切换到CPU上运行。它的大致执行步骤
 根据问题描述，`proc_run` 函数的实现步骤如下：
 
 ```c
-void proc_run(struct proc_struct *proc) {
-    // 如果目标进程和当前进程相同，则不需要切换
-    if (proc != current) {
+void proc_run(struct proc_struct *proc)
+{
+    // 只有当目标进程不是当前进程时才需要切换
+    if (proc != current)
+    {
+        // LAB4:EXERCISE3 2313547 2312220
+        /*
+         * 设计思路：
+         * 进程切换涉及三个核心步骤：
+         * 1. 保护现场：禁用中断，防止切换过程中断导致状态不一致。
+         * 2. 切换地址空间：让 CPU 看见新进程的内存映射 (页表)。
+         * 3. 切换执行流：保存旧寄存器，加载新寄存器 (Context Switch)。
+         */
+         
         bool intr_flag;
-        // 保存当前进程为 prev_proc
         struct proc_struct *prev_proc = current;
-
-        // 禁用中断，并保存当前中断状态
+        
+        // 1. 禁用中断 (Critical Section Start)
+        // 在切换过程中，如果发生时钟中断，调度器可能会再次尝试调度，导致死锁或数据损坏。
         local_intr_save(intr_flag);
-
         {
-            // 更新当前进程为目标进程
+            // 2. 更新当前进程指针
             current = proc;
-
-            // 切换到新进程的页表（通过修改 SATP 寄存器）
-            lsatp(proc->pgdir);
-
-            // 切换上下文，保存当前进程的状态，并恢复新进程的状态
+            
+            // 3. 切换页表 (地址空间切换)
+            // lsatp 指令会更新 RISC-V 的 SATP 寄存器 (包含页表基址 PPN)。
+            // 这步之后，TLB 会被刷新，CPU 看到的虚拟地址将映射到新进程的物理内存。
+            // 对于内核线程，proc->pgdir 指向内核通用页表；对于用户进程，指向其专属页表。
+            lsatp(proc->pgdir); 
+            
+            // 4. 执行上下文切换 (控制流切换)
+            // 调用汇编实现的 switch_to(from, to)。
+            // - 保存：将当前 CPU 寄存器 (ra, sp, s0-s11) 保存到 prev_proc->context。
+            // - 恢复：将 proc->context 中的值加载到 CPU 寄存器。
+            // - 跳转：switch_to 的最后一条指令是 ret，它会跳转到 proc->context.ra 指向的地址。
+            //   (如果是新进程，ra 是 forkret；如果是旧进程，ra 是它上次 switch_to 后面的地址)
             switch_to(&(prev_proc->context), &(proc->context));
         }
-
-        // 恢复中断状态
+        // 5. 恢复中断 (Critical Section End)
+        // 注意：这行代码实际上是在 switch_to 返回后执行的。
+        // 也就是说，是在进程“下次”被调度回来时执行的。
         local_intr_restore(intr_flag);
     }
 }
@@ -480,12 +516,6 @@ void proc_run(struct proc_struct *proc) {
 
 2. **initproc**：第二个内核线程，用于执行系统初始化后的一些任务。在本实验中，`initproc` 输出了一些简单的日志信息，作为示例进程。
 
-#### 实验结果
-
-在完成 `proc_run` 函数的编写并运行代码后，使用 `make qemu` 编译并启动虚拟机，能够看到 `initproc` 和 `idleproc` 在系统中轮流执行。`idleproc` 在没有其他进程需要执行时会占用 CPU，`initproc` 在系统初始化时运行，并输出日志信息。这证明了进程切换的成功实现。
-
-
-
 ## 实验结果
 
 ![alt text](image.png)
@@ -498,6 +528,23 @@ void proc_run(struct proc_struct *proc) {
 
 这两个宏通过保存和恢复“执行前的中断状态”来支持嵌套的临界区保护。其核心逻辑并不只是简单的“关”和“开”，而是“基于状态的恢复”。
 
+**local_intr_save(x):**
+
+* 首先读取 sstatus 寄存器，检查其中的 SIE (Supervisor Interrupt Enable) 位。
+
+* 如果 SIE 为 1（开启），则调用指令关闭中断，并将变量 x 设为 1。
+
+* 如果 SIE 为 0（已关闭），则不进行硬件操作，将变量 x 设为 0。
+
+**local_intr_restore(x):**
+
+* 检查变量 x。
+
+* 只有当 x 为 1 时，才重新开启中断。
+
+* 如果 x 为 0，说明在进入临界区之前中断就是关着的（可能是嵌套调用），因此保持关闭状态。
+
+这种设计避免了简单的 disable() / enable() 导致的逻辑错误（即内部函数返回时意外开启了外部函数还需要关闭的中断）。
 #### 1. 代码实现解析
 
 代码定义在 kern/sync/sync.h 中：
@@ -530,26 +577,26 @@ static inline void __intr_restore(bool flag) {
 
 #### 2. 执行流程详解
 
-当调用 local_intr_save(intr_flag); 时，发生了以下步骤：
+当调用 local_intr_save(x); 时，发生了以下步骤：
 
 * 检查当前状态：系统首先通过 read_csr(sstatus) 读取当前的硬件状态。
 
 * 保存状态到变量：
   
-* 如果当前中断是开启的：__intr_save 会调用 intr_disable() 关闭中断，并返回 1。变量 intr_flag 被赋值为 1。
-* 如果当前中断是关闭的（例如已经在另一个临界区内）：__intr_save 不做任何硬件操作，直接返回 0。变量 intr_flag 被赋值为 0。
+  * 如果当前中断是开启的：__intr_save 会调用 intr_disable() 关闭中断，并返回 1。变量 x 被赋值为 1。
+  * 如果当前中断是关闭的（例如已经在另一个临界区内）：__intr_save 不做任何硬件操作，直接返回 0。变量 x 被赋值为 0。
 
 * 执行临界区代码：此时，无论之前状态如何，现在的中断肯定是被禁用的，保证了操作的原子性。
 
-当调用 local_intr_restore(intr_flag); 时：
+当调用 local_intr_restore(x); 时：
 
-* 检查保存的变量：查看 intr_flag 的值。
+* 检查保存的变量：查看 x 的值。
 
 * 条件恢复：
 
-* 如果 intr_flag 是 1：说明进入临界区前中断是开着的，因此现在调用 intr_enable() 恢复中断。
+  * 如果 x 是 1：说明进入临界区前中断是开着的，因此现在调用 intr_enable() 恢复中断。
 
-* 如果 intr_flag 是 0：说明进入临界区前中断本来就是关着的（嵌套调用），因此不执行开中断操作，继续保持关闭状态。
+  * 如果 x 是 0：说明进入临界区前中断本来就是关着的（嵌套调用），因此不执行开中断操作，继续保持关闭状态。
 
 #### 为什么要这样设计？
 
@@ -639,9 +686,9 @@ static inline void __intr_restore(bool flag) {
 
 **1. 为什么合并是合理的：**
 
-* 操作的原子意图：在操作系统内存管理中，调用 get_pte 的绝大多数场景（如 page_insert）都是“我要往这里写映射，给我一个可用的 PTE”。如果 PTE 不存在，调用者的意图隐含着“请帮我创建一个”，否则无法进行后续的映射。
+* **操作的原子意图**：在操作系统内存管理中，调用 get_pte 的绝大多数场景（如 page_insert）都是“我要往这里写映射，给我一个可用的 PTE”。如果 PTE 不存在，调用者的意图隐含着“请帮我创建一个”，否则无法进行后续的映射。
 
-* 减少代码冗余与性能开销：
+* **减少代码冗余与性能开销**：
 
   * 页表查找需要“游走”多级页表（Walk Page Table）。
   
@@ -650,7 +697,7 @@ static inline void __intr_restore(bool flag) {
   * 合并写法只需要遍历一次。
 
 
-* 接口简洁：通过 bool create 参数控制行为，既满足了只读查找（create=0，如缺页异常时的检查），也满足了写入分配（create=1，如建立映射），接口通用性强。
+* **接口简洁**：通过 bool create 参数控制行为，既满足了只读查找（create=0，如缺页异常时的检查），也满足了写入分配（create=1，如建立映射），接口通用性强。
 
 **2. 某些场景拆分的理由：**
 

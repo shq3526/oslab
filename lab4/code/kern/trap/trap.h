@@ -39,13 +39,12 @@ struct pushregs
     uintptr_t t6;   // Temporary
 };
 
-struct trapframe
-{
-    struct pushregs gpr;
-    uintptr_t status;
-    uintptr_t epc;
-    uintptr_t badvaddr;
-    uintptr_t cause;
+struct trapframe {
+    struct pushregs gpr; // 32个通用寄存器
+    uintptr_t status;    // sstatus 寄存器
+    uintptr_t epc;       // 异常程序计数器
+    uintptr_t badvaddr;  // 异常虚拟地址
+    uintptr_t cause;     // 异常原因
 };
 
 void trap(struct trapframe *tf);

@@ -36,7 +36,7 @@ int kern_init(void)
     idt_init(); // init interrupt descriptor table
 
     vmm_init();  // init virtual memory management
-    proc_init(); // init process table
+    proc_init(); // init process table 完成虚拟内存管理初始化和进程系统初始化，并在内核初始化后切入idle进程
 
     clock_init();  // init clock interrupt
     intr_enable(); // enable irq interrupt
