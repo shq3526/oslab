@@ -1990,11 +1990,11 @@ ffffffffc0200d5a:	2c878763          	beq	a5,s0,ffffffffc0201028 <default_check+0
     int count = 0, total = 0;
 ffffffffc0200d5e:	4481                	li	s1,0
 ffffffffc0200d60:	4901                	li	s2,0
- * test_bit - Determine whether a bit is set
- * @nr:     the bit to test
- * @addr:   the address to count from
+ * 这是一个非原子操作。它只读取当前内存值并检查某一位。
+ * volatile 确保编译器每次都从内存重新读取，而不是使用缓存的旧值。
  * */
 static inline bool test_bit(int nr, volatile void *addr) {
+    // 计算对应的字，右移 nr 位，然后与 1 '与' 操作
     return (((*(volatile unsigned long *)addr) >> nr) & 1);
 ffffffffc0200d62:	ff07b703          	ld	a4,-16(a5)
         struct Page *p = le2page(le, page_link);

@@ -3,9 +3,10 @@
 
     .macro SAVE_ALL  #定义汇编宏
 
-    csrw sscratch, sp  #保存原先的栈顶指针到sscratch
+    csrw sscratch, sp  #保存原先的栈顶指针到sscratch，将 `sp` 的值赋值给 `sscratch`，即保存原先的栈顶指针到 `sscratch`。  
 
-    addi sp, sp, -36 * REGBYTES  #REGBYTES是riscv.h定义的常量，表示一个寄存器占据几个字节
+    addi sp, sp, -36 * REGBYTES  
+    #REGBYTES是riscv.h定义的常量，表示一个寄存器占据几个字节
     #让栈顶指针向低地址空间延伸 36个寄存器的空间，可以放下一个trapFrame结构体。
     #除了32个通用寄存器，我们还要保存4个和中断有关的CSR
 
@@ -13,6 +14,17 @@
     #因为我们想在trapFrame里保存分配36个REGBYTES之前的sp
     #也就是保存之前写到sscratch里的sp的值
 
+    #我们可以看到，trapentry.S作用是一个"包装器"：它负责保存和恢复上下文，并把上下文包装成结构体，传递给真正的中断处理函数trap那里去。
+    #在上面的代码中，我们看到最后一条指令是sret。这是一条特权指令，用于从S模式返回，完成从内核态到用户态的切换。
+    #在执行sret之前，需要完成一些准备工作。首先，从trapframe中恢复用户程序的寄存器值（这由RESTORE_ALL宏完成），使得用户程序能够继续运行。
+    #接着，根据中断或者异常的类型重新设置sepc，确保程序能够从正确的地址继续执行。对于系统调用，这通常是 ecall指令的下一条指令地址（即sepc + 4）；
+    #对于中断，这是被中断打断的指令地址（即sepc）；对于进程切换，这是新进程的起始地址。然后，将sstatus.SPP设置为 0，表示要返回到 U 模式。
+    #当准备工作完成后，会执行sret指令，根据sstatus.SPP的值（此时为 0）切换回 U 模式。
+    #随后，恢复中断使能状态，将sstatus.SIE恢复为sstatus.SPIE的值。由于在 U 模式下总是使能中断，因此中断会重新开启。
+    #接着，更新sstatus，将sstatus.SPIE设置为 1,sstatus.SPP设置为 0，为下一次中断做准备。
+    #最后，将sepc的值赋给pc，并跳转回用户程序（sepc指向的地址）继续执行。
+    #此时，系统已经安全地从 S 模式返回到 U 模式，用户程序继续执行。
+    
     # save x registers
     STORE x0, 0*REGBYTES(sp)
     STORE x1, 1*REGBYTES(sp)
@@ -49,7 +61,11 @@
     # get sr, epc, badvaddr, cause
     # Set sscratch register to 0, so that if a recursive exception
     # occurs, the exception vector knows it came from the kernel
+
     # RISCV不能直接从CSR写到内存, 需要csrr把CSR读取到通用寄存器，再从通用寄存器STORE到内存
+    #将 `sscratch` 赋值给 `s0`，然后将 `sscratch` 置 0。s0 用来表示函数调用前栈顶的位置。
+    #将 `sscratch` 置 0 的话如果产生递归异常，异常向量就会知道它来自于内核。  
+    
     csrrw s0, sscratch, x0
     csrr s1, sstatus
     csrr s2, sepc
@@ -130,16 +146,3 @@ __trapret:
     RESTORE_ALL
     # return from supervisor call
     sret
-
-
-
-#我们可以看到，trapentry.S作用是一个"包装器"：它负责保存和恢复上下文，并把上下文包装成结构体，传递给真正的中断处理函数trap那里去。
-#在上面的代码中，我们看到最后一条指令是sret。这是一条特权指令，用于从S模式返回，完成从内核态到用户态的切换。
-#在执行sret之前，需要完成一些准备工作。首先，从trapframe中恢复用户程序的寄存器值（这由RESTORE_ALL宏完成），使得用户程序能够继续运行。
-#接着，根据中断或者异常的类型重新设置sepc，确保程序能够从正确的地址继续执行。对于系统调用，这通常是 ecall指令的下一条指令地址（即sepc + 4）；
-#对于中断，这是被中断打断的指令地址（即sepc）；对于进程切换，这是新进程的起始地址。然后，将sstatus.SPP设置为 0，表示要返回到 U 模式。
-#当准备工作完成后，会执行sret指令，根据sstatus.SPP的值（此时为 0）切换回 U 模式。
-#随后，恢复中断使能状态，将sstatus.SIE恢复为sstatus.SPIE的值。由于在 U 模式下总是使能中断，因此中断会重新开启。
-#接着，更新sstatus，将sstatus.SPIE设置为 1,sstatus.SPP设置为 0，为下一次中断做准备。
-#最后，将sepc的值赋给pc，并跳转回用户程序（sepc指向的地址）继续执行。
-#此时，系统已经安全地从 S 模式返回到 U 模式，用户程序继续执行。

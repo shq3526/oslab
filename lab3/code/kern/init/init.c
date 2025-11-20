@@ -14,7 +14,16 @@
 int kern_init(void) __attribute__((noreturn));
 // 声明用于调试的栈回溯函数
 void grade_backtrace(void);
+// 首先，保存中断发生时的pc值，即程序计数器的值，这个值会被保存在sepc寄存器中。
+// 对于异常来说，这通常是触发异常的指令地址，而对于中断来说，则是被打断的指令地址。
+// 然后，记录中断或异常的类型，并将其写入scause寄存器。这里的scause会告诉系统是中断还是异常，且会给出具体的中断类型。
 
+// 接下来，保存相关的辅助信息。如果异常与缺页或访问错误相关，将相关的地址或数据保存到stval寄存器，以便中断处理程序在后续处理中使用。
+// 紧接着，保存并修改中断使能状态。将当前的中断使能状态sstatus.SIE保存到sstatus.SPIE中，并且会将sstatus.SIE清零，从而禁用 S 模式下的中断。
+// 这是为了保证在处理中断时不会被其他中断打断。
+
+// 然后，保存当前的特权级信息。将当前特权级（即 U 模式，值为 0）保存到sstatus.SPP中，并将当前特权级切换到 S 模式。
+// 此时，系统已经进入 S 模式，准备跳转到中断处理程序。将pc设置为stvec寄存器中的值，并跳转到中断处理程序的入口。
 
 // kern_init 是 ucore 内核的 C 语言入口点（在 entry.S 之后被调用）
 int kern_init(void) {
@@ -74,20 +83,6 @@ int kern_init(void) {
     while (1)
         ;
 }
-// 内核初始化函数kern_init()的执行流：(从kern/init/entry.S进入) -> 
-// 输出一些信息说明正在初始化 -> 
-// 设置中断向量表(stvec)跳转到的地方为kern/trap/trapentry.S里的一个标记 ->
-// 在kern/driver/clock.c设置第一个时钟事件，使能时钟中断->
-// 设置全局的S mode中断使能位-> 现在开始不断地触发时钟中断
-
-// 产生一次时钟中断的执行流：
-// set_sbi_timer()通过OpenSBI的时钟事件触发一个中断，跳转到kern/trap/trapentry.S的__alltraps标记 -> 
-// 保存当前执行流的上下文，并通过函数调用，切换为kern/trap/trap.c的中断处理函数trap()的上下文，
-// 进入trap()的执行流。切换前的上下文作为一个结构体，传递给trap()作为函数参数 -> 
-// kern/trap/trap.c按照中断类型进行分发(trap_dispatch(), interrupt_handler())->
-// 执行时钟中断对应的处理语句，累加计数器，设置下一次时钟中断->
-// 完成处理，返回到kern/trap/trapentry.S->
-// 恢复原先的上下文，中断处理结束。
 // --- 以下是用于 `make grade` 测试栈回溯（backtrace）的代码 ---
 
 void __attribute__((noinline))
