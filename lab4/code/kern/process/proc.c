@@ -83,8 +83,28 @@ static list_entry_t hash_list[HASH_LIST_SIZE];
 // 当就绪队列为空时，调度器会调度 idleproc 运行 (通常是一个死循环)。
 struct proc_struct *idleproc = NULL;
 
+// idleproc 是操作系统中的第 0 号内核线程。它是系统启动后创建的第一个进程（或线程），也是系统中唯一一个永远不会被销毁的进程。
+
+// idleproc 的主要作用
+// 作为调度器的“兜底”进程：
+// 当系统的就绪队列（Run Queue）为空时（即没有任何其他进程处于 PROC_RUNNABLE 状态）
+// 调度器（schedule 函数）必须有一个进程可以运行，否则 CPU 将无事可做。
+// 这时，调度器会选择运行 idleproc。
+// idleproc 就像是一个“占位符”，保证 CPU 总是有代码在执行，而不是处于未定义状态。
+
+// 节能与低功耗：
+// 在现代操作系统中，idleproc 的循环体通常不仅仅是死循环，还会包含特殊的 CPU 指令（如 x86 的 hlt 或 RISC-V 的 wfi - Wait For Interrupt）。
+// 这些指令会让 CPU 进入低功耗模式，暂停执行指令，直到下一个中断（如时钟中断或 I/O 中断）到来。
+// 在 ucore 的 Lab 4 中，虽然实现比较简单，但在 cpu_idle 函数中通常会看到这种设计。
+
+// 辅助调度：
+
+// idleproc 在运行时，如果被中断打断（例如时钟中断），中断处理程序会检查是否有新的进程变为了就绪状态。
+// 如果有，idleproc 的 need_resched 标志会被置位，促使调度器切换到新的进程。
+
 // init proc (初始化进程)
 // 这是第1个内核线程，pid=1。它是所有用户进程的祖先。
+
 struct proc_struct *initproc = NULL;
 
 // current proc (当前指针)
@@ -128,7 +148,7 @@ alloc_proc(void)
         proc->need_resched = 0;             // 刚创建时不急于抢占 CPU
         proc->parent = NULL;                // 父进程指针初始化为空
         proc->mm = NULL;                    // 内存管理结构 (内核线程不需要 mm，因为它们直接使用内核空间)
-        memset(&(proc->context), 0, sizeof(struct context)); // 极重要：清零上下文结构
+        memset(&(proc->context), 0, sizeof(struct context)); //清零上下文结构
         proc->tf = NULL;                    // 中断帧指针初始化为空 (将在 copy_thread 中设置)
         proc->pgdir = boot_pgdir_pa;        // 页目录表基址：默认使用内核页表 (重要！否则无法访问内核代码)
         proc->flags = 0;                    // 标志位清零
@@ -312,7 +332,7 @@ int kernel_thread(int (*fn)(void *), void *arg, uint32_t clone_flags)
     memset(&tf, 0, sizeof(struct trapframe));
     
     // 2. 设置通用寄存器
-    tf.gpr.s0 = (uintptr_t)fn;       // s0 保存函数地址 (习惯用法)
+    tf.gpr.s0 = (uintptr_t)fn;       // s0 保存函数地址
     tf.gpr.s1 = (uintptr_t)arg;      // s1 保存函数参数
     
     // 3. 设置状态寄存器 (sstatus)
@@ -566,7 +586,7 @@ void cpu_idle(void)
     {
         if (current->need_resched)
         {
-            schedule(); // 尝试调度其他进程
+            schedule(); // 当检测到需要调度时，系统通过schedule()选择可运行的线程并进行线程切换
         }
     }
 }

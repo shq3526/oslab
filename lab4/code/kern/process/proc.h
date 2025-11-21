@@ -76,12 +76,27 @@ struct proc_struct
                                   // 因为内核线程直接共享内核的内存空间。
     struct context context;       // Switch here to run process
                                   // 进程上下文数据。
+// context 保存了进程在内核态进行上下文切换（Context Switch）时所需的寄存器状态。根据 RISC-V 的调用约
+// 定（Calling Convention），这里只保存被调用者保存（Callee-saved） 的寄存器（s0-s11），以及返回地址寄
+// 存器（ra）和栈指针（sp）。
+// 作用：
+// 进程切换：当内核调用schedule函数决定剥夺当前进程 CPU 并让另一个进程运行时，会调用
+// proc_run，进而调用汇编函数switch_to。
+// 保存与恢复：switch_to会将当前处理器上正在运行的进程（prev）的寄存器值保存到其
+// proc_struct->context 中，并从目标进程（next）的 proc_struct->context 中加载寄存器值。
+// 流控制：通过恢复 ra 寄存器，当 switch_to 执行 ret 指令时，CPU 会跳转到目标进程上次被挂起的位
+// 置（或者是新进程的 forkret）继续执行，从而实现执行流的切换。
                                   // 保存了进程暂停时的寄存器状态（ra, sp, s0-s11），用于 switch_to 恢复执行。
+
     struct trapframe *tf;         // Trap frame for current interrupt
                                   // 中断帧指针。
                                   // 指向内核栈的某个位置，保存了进程从用户态陷入内核态（或发生中断）前的
                                   // 完整寄存器现场（包括 pc, sp, 通用寄存器等）。
                                   // 在创建新进程时，tf 用于伪造一个中断现场，使进程从 kernel_thread_entry 开始执行。
+
+// Context 用于进程之间的主动/被动切换（Switch），只保存 Callee-saved 寄存器，发生在内核态函数调用层面。
+// Trapframe 用于中断/异常/系统调用处理，保存完整现场，发生在用户态与内核态之间或硬件中断层面。在本实验中，它特别用于构造新线程的初始执行上下文。
+
     uintptr_t pgdir;              // the base addr of Page Directroy Table(PDT)
                                   // 页目录表的物理基地址。
                                   // 进程运行时，该值会被加载到 SATP 寄存器，从而切换到该进程的虚拟地址空间。
