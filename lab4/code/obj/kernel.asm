@@ -6675,7 +6675,7 @@ ffffffffc0203554:	00002697          	auipc	a3,0x2
 ffffffffc0203558:	0dc68693          	addi	a3,a3,220 # ffffffffc0205630 <default_pmm_manager+0x978>
 ffffffffc020355c:	00001617          	auipc	a2,0x1
 ffffffffc0203560:	3ac60613          	addi	a2,a2,940 # ffffffffc0204908 <commands+0x818>
-ffffffffc0203564:	16a00593          	li	a1,362
+ffffffffc0203564:	17e00593          	li	a1,382
 ffffffffc0203568:	00002517          	auipc	a0,0x2
 ffffffffc020356c:	0e050513          	addi	a0,a0,224 # ffffffffc0205648 <default_pmm_manager+0x990>
 ffffffffc0203570:	eebfc0ef          	jal	ra,ffffffffc020045a <__panic>
@@ -6738,7 +6738,7 @@ ffffffffc02035dc:	1141                	addi	sp,sp,-16
     panic("process exit!!.\n");
 ffffffffc02035de:	00002617          	auipc	a2,0x2
 ffffffffc02035e2:	08260613          	addi	a2,a2,130 # ffffffffc0205660 <default_pmm_manager+0x9a8>
-ffffffffc02035e6:	1e700593          	li	a1,487
+ffffffffc02035e6:	1fb00593          	li	a1,507
 ffffffffc02035ea:	00002517          	auipc	a0,0x2
 ffffffffc02035ee:	05e50513          	addi	a0,a0,94 # ffffffffc0205648 <default_pmm_manager+0x990>
 {
@@ -6998,14 +6998,14 @@ ffffffffc02037d4:	bfb9                	j	ffffffffc0203732 <proc_init+0x13a>
         panic("cannot alloc idleproc.\n");
 ffffffffc02037d6:	00002617          	auipc	a2,0x2
 ffffffffc02037da:	ea260613          	addi	a2,a2,-350 # ffffffffc0205678 <default_pmm_manager+0x9c0>
-ffffffffc02037de:	20600593          	li	a1,518
+ffffffffc02037de:	21a00593          	li	a1,538
 ffffffffc02037e2:	00002517          	auipc	a0,0x2
 ffffffffc02037e6:	e6650513          	addi	a0,a0,-410 # ffffffffc0205648 <default_pmm_manager+0x990>
 ffffffffc02037ea:	c71fc0ef          	jal	ra,ffffffffc020045a <__panic>
         panic("create init_main failed.\n");
 ffffffffc02037ee:	00002617          	auipc	a2,0x2
 ffffffffc02037f2:	ed260613          	addi	a2,a2,-302 # ffffffffc02056c0 <default_pmm_manager+0xa08>
-ffffffffc02037f6:	22700593          	li	a1,551
+ffffffffc02037f6:	23b00593          	li	a1,571
 ffffffffc02037fa:	00002517          	auipc	a0,0x2
 ffffffffc02037fe:	e4e50513          	addi	a0,a0,-434 # ffffffffc0205648 <default_pmm_manager+0x990>
 ffffffffc0203802:	c59fc0ef          	jal	ra,ffffffffc020045a <__panic>
@@ -7014,7 +7014,7 @@ ffffffffc0203806:	00002697          	auipc	a3,0x2
 ffffffffc020380a:	f0a68693          	addi	a3,a3,-246 # ffffffffc0205710 <default_pmm_manager+0xa58>
 ffffffffc020380e:	00001617          	auipc	a2,0x1
 ffffffffc0203812:	0fa60613          	addi	a2,a2,250 # ffffffffc0204908 <commands+0x818>
-ffffffffc0203816:	22e00593          	li	a1,558
+ffffffffc0203816:	24200593          	li	a1,578
 ffffffffc020381a:	00002517          	auipc	a0,0x2
 ffffffffc020381e:	e2e50513          	addi	a0,a0,-466 # ffffffffc0205648 <default_pmm_manager+0x990>
 ffffffffc0203822:	c39fc0ef          	jal	ra,ffffffffc020045a <__panic>
@@ -7023,7 +7023,7 @@ ffffffffc0203826:	00002697          	auipc	a3,0x2
 ffffffffc020382a:	ec268693          	addi	a3,a3,-318 # ffffffffc02056e8 <default_pmm_manager+0xa30>
 ffffffffc020382e:	00001617          	auipc	a2,0x1
 ffffffffc0203832:	0da60613          	addi	a2,a2,218 # ffffffffc0204908 <commands+0x818>
-ffffffffc0203836:	22d00593          	li	a1,557
+ffffffffc0203836:	24100593          	li	a1,577
 ffffffffc020383a:	00002517          	auipc	a0,0x2
 ffffffffc020383e:	e0e50513          	addi	a0,a0,-498 # ffffffffc0205648 <default_pmm_manager+0x990>
 ffffffffc0203842:	c19fc0ef          	jal	ra,ffffffffc020045a <__panic>
@@ -7047,7 +7047,7 @@ ffffffffc0203856:	4f1c                	lw	a5,24(a4)
 ffffffffc0203858:	2781                	sext.w	a5,a5
 ffffffffc020385a:	dff5                	beqz	a5,ffffffffc0203856 <cpu_idle+0x10>
         {
-            schedule(); // 尝试调度其他进程
+            schedule(); // 当检测到需要调度时，系统通过schedule()选择可运行的线程并进行线程切换
 ffffffffc020385c:	0a2000ef          	jal	ra,ffffffffc02038fe <schedule>
 ffffffffc0203860:	bfd5                	j	ffffffffc0203854 <cpu_idle+0xe>
 

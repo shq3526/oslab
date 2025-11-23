@@ -590,3 +590,41 @@ void cpu_idle(void)
         }
     }
 }
+
+// #### 问题
+
+// ##### **`struct context context`**
+// context 保存了进程在内核态进行上下文切换（Context Switch）时所需的寄存器状态。根据 RISC-V 的调用约定（Calling Convention），这里只保存被调用者保存（Callee-saved） 的寄存器（s0-s11），以及返回地址寄存器（ra）和栈指针（sp）。
+
+// **作用**：
+// * 进程切换：当内核调用`schedule`函数决定剥夺当前进程 CPU 并让另一个进程运行时，会调用 `proc_run`，进而调用汇编函数`switch_to`。
+
+// * 保存与恢复：`switch_to`会将当前处理器上正在运行的进程（prev）的寄存器值保存到其 `proc_struct->context` 中，并从目标进程（next）的 `proc_struct->context` 中加载寄存器值。
+
+// * 流控制：通过恢复 `ra` 寄存器，当 `switch_to` 执行 `ret` 指令时，CPU 会跳转到目标进程上次被挂起的位置（或者是新进程的 forkret）继续执行，从而实现执行流的切换。
+// ##### **`struct trapframe *tf`**
+
+// `tf`（中断帧）指向内核栈顶部的一个结构体，用于保存进程在发生中断（Interrupt）、异常（Exception）或系统调用（System Call）瞬间的完整 CPU 执行现场。它包含了所有通用寄存器（32个）、以及 `epc`（异常程序计数器）、`sstatus`（状态寄存器）等硬件状态信息。
+
+// **作用**：
+
+// 1.  **中断处理**：当进程在运行时发生中断，CPU 的所有状态被保存在内核栈顶的 `trapframe` 中，`proc->tf` 会指向它。
+// 当中断处理完毕返回时，`__trapret` 会从 `tf` 中恢复所有寄存器，使进程无缝继续执行。
+
+// 2.  **新线程启动**：在本实验中，`tf` 被用于设置新内核线程的**初始启动状态**。
+
+// * 在创建新内核线程（kernel_thread -> do_fork）时，我们并没有一个真实的“中断现场”。
+
+// * 因此，代码中手动构造了一个临时的 trapframe，并将其复制到新线程内核栈的顶部。
+
+// * 参数传递：利用 tf->gpr.s0 和 tf->gpr.s1 传递线程函数指针 fn 和参数 arg。
+
+// * 入口设定：将 tf->epc 设置为 kernel_thread_entry。
+
+// * 启动逻辑：当新线程首次被调度运行时，它会先经由 switch_to 跳转到 forkret，再跳转到 forkrets，最后执行 __trapret。
+// __trapret 会将栈顶 tf 中的内容弹出到寄存器中。此时，CPU 的 pc 指针会变成 kernel_thread_entry，
+// 从而让新线程“好像”是从中断返回一样，开始执行指定的函数。
+
+// * Context 用于进程之间的主动/被动切换（Switch），只保存 Callee-saved 寄存器，发生在内核态函数调用层面。
+
+// * Trapframe 用于中断/异常/系统调用处理，保存完整现场，发生在用户态与内核态之间或硬件中断层面。在本实验中，它特别用于构造新线程的初始执行上下文。
