@@ -53,7 +53,7 @@ else
 fi
 
 ## default variables
-default_timeout=300
+default_timeout=1000
 default_pts=5
 
 pts=5

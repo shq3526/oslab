@@ -10,6 +10,7 @@ int sys_getpid(void);
 int sys_putc(int64_t c);
 int sys_pgdir(void);
 int sys_get_free_pages(void);
+int sys_set_cow_attack(int enable);
 
 #endif /* !__USER_LIBS_SYSCALL_H__ */
 

@@ -31,10 +31,10 @@ DTB init completed
 
 Special kernel symbols:
   entry  0xc020004a (virtual)
-  etext  0xc02059fc (virtual)
-  edata  0xc02c5988 (virtual)
-  end    0xc02c9e34 (virtual)
-Kernel executable memory footprint: 808KB
+  etext  0xc0205b02 (virtual)
+  edata  0xc02d2968 (virtual)
+  end    0xc02d6e2c (virtual)
+Kernel executable memory footprint: 860KB
 memory management: default_pmm_manager
 physcial memory map:
   memory: 0x08000000, [0x80000000, 0x87ffffff].
@@ -51,11 +51,10 @@ kernel_execve: pid = 2, name = "exit".
 Breakpoint
 I am the parent. Forking the child...
 Store/AMO page fault
-I am parent, fork a child pid 3
-I am the parent, waitStore/AMO page fault
+Store/AMO page fault
 I am the child.
-Instruction page fault
-trapframe at 0xffffffffc04cfee0
+I aInstruction page fault
+trapframe at 0xffffffffc04dcee0
   zero     0x00000000
   ra       0x0000000a
   sp       0x7fffff70
@@ -67,15 +66,15 @@ trapframe at 0xffffffffc04cfee0
   s0       0x7fffffc0
   s1       0x00000000
   a0       0x00000000
-  a1       0x00000074
-  a2       0x00800a60
+  a1       0x00000061
+  a2       0x00800a08
   a3       0x7fffff98
-  a4       0xffffffff
+  a4       0x00000000
   a5       0x00000001
-  a6       0x0000000a
+  a6       0x00000000
   a7       0x00000000
   s2       0x00000000
-  s3       0x0000000a
+  s3       0x00000002
   s4       0x00000000
   s5       0x00000000
   s6       0x00000000
@@ -84,7 +83,7 @@ trapframe at 0xffffffffc04cfee0
   s9       0x00000000
   s10      0x00000000
   s11      0x00000000
-  t3       0x00800a60
+  t3       0x00800a08
   t4       0x00000000
   t5       0x00000000
   t6       0x00000000
@@ -94,6 +93,6 @@ trapframe at 0xffffffffc04cfee0
   cause    0x0000000c
 all user-mode processes have quit.
 init check memory pass.
-kernel panic at kern/process/proc.c:555:
+kernel panic at kern/process/proc.c:602:
     initproc exit.
 

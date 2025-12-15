@@ -27,20 +27,42 @@ static void print_ticks()
 #endif
 }
 
-/* idt_init - initialize IDT to each of the entry points in kern/trap/vectors.S */
+/* * idt_init - 初始化中断描述符表 (IDT) / 中断向量表
+ * 这个函数在内核启动时被调用 (init.c)，用于配置 CPU 如何处理中断和异常。
+ */
 void idt_init(void)
 {
     extern void __alltraps(void);
-    /* Set sscratch register to 0, indicating to exception vector that we are
-     * presently executing in the kernel */
+    
+    /* * [RISC-V 硬件细节] 设置 sscratch 寄存器
+     * sscratch 用于在陷阱发生时区分我们是从“用户态”进来的，还是从“内核态”进来的。
+     * - 设置为 0：表示当前已经在内核态执行。
+     * - 在 trapentry.S 中，会检查 sscratch：
+     * - 如果是 0，说明发生中断前已经在内核，不需要切换栈。
+     * - 如果非 0，说明发生中断前在用户态，sscratch 里存的是内核栈地址，需要交换 sp 切换到内核栈。
+     */
     write_csr(sscratch, 0);
-    /* Set the exception vector address */
+    
+    /* * [中断入口] 设置 stvec (Supervisor Trap Vector Base Address)
+     * 将中断向量表的基地址设置为 __alltraps (定义在 trapentry.S)。
+     * 当任何中断或异常发生时，CPU 会自动跳转到 __alltraps 处的汇编代码开始执行。
+     * __alltraps 负责保存所有寄存器 (Context Save) 并调用 trap() 函数。
+     */
     write_csr(stvec, &__alltraps);
-    /* Allow kernel to access user memory */
+    
+    /* * [内存权限] 设置 sstatus 寄存器
+     * SSTATUS_SUM (Supervisor User Memory access):
+     * 允许内核模式下的代码直接读取/写入用户模式的内存页。
+     * 这在系统调用处理（如 sys_write）中读取用户传入的字符串参数时是必须的。
+     */
     set_csr(sstatus, SSTATUS_SUM);
 }
 
-/* trap_in_kernel - test if trap happened in kernel */
+/* * trap_in_kernel - 判断陷阱是否发生在内核态
+ * 根据 sstatus 寄存器的 SPP (Supervisor Previous Privilege) 位来判断。
+ * SPP = 1: 之前的特权级是 Supervisor (内核态)
+ * SPP = 0: 之前的特权级是 User (用户态)
+ */
 bool trap_in_kernel(struct trapframe *tf)
 {
     return (tf->status & SSTATUS_SPP) != 0;
@@ -95,8 +117,13 @@ void print_regs(struct pushregs *gpr)
 
 extern struct mm_struct *check_mm_struct;
 
+/* * interrupt_handler - 中断处理函数
+ * 处理所有的外部中断（Interrupts），如时钟中断、设备中断。
+ * 这里的核心逻辑对应实验报告中的【时间片轮转调度 (RR)】实现。
+ */
 void interrupt_handler(struct trapframe *tf)
 {
+    // cause 最高位为1表示中断，去掉最高位得到具体的中断号
     intptr_t cause = (tf->cause << 1) >> 1;
     switch (cause)
     {
@@ -112,9 +139,39 @@ void interrupt_handler(struct trapframe *tf)
     case IRQ_M_SOFT:
         cprintf("Machine software interrupt\n");
         break;
+        
+    /* * [Lab 5 调度核心] 用户态时钟中断 (IRQ_U_TIMER)
+     * 当 CPU 处于用户态执行程序时，时间到了触发此中断。
+     */
     case IRQ_U_TIMER:
-        cprintf("User software interrupt\n");
+        // (1) 通过 OpenSBI 接口设置下一次时钟中断的时间点，维持系统心跳
+        clock_set_next_event();
+
+        // (2) 增加系统全局 tick 计数器，用于统计时间和系统运行状态
+        ticks++;
+
+        // (3) [进程调度逻辑] 时间片消耗
+        // 如果当前有进程在运行，扣除其剩余的时间片 (time_slice)。
+        // 这对应 sched.c 中的 Round-Robin 逻辑。
+        if (current != NULL) {
+            if (current->time_slice > 0) {
+                current->time_slice--;
+            }
+            
+            // 如果时间片用尽 (0)，设置 need_resched 标志。
+            // 注意：这里只设置标志，不直接调用 schedule()。
+            // 真正的 schedule() 调用发生在 trap() 函数即将返回用户态之前。
+            // 这样做保证了中断处理的原子性和栈的整洁。
+            if (current->time_slice == 0) {
+                current->need_resched = 1;
+            }
+        }
         break;
+        
+    /* * [Lab 5 调度核心] 内核态时钟中断 (IRQ_S_TIMER)
+     * 即使 CPU 正在内核态忙碌（例如处理系统调用），也需要响应时钟中断来扣除时间片。
+     * 这防止了内核态程序死循环导致整个系统卡死，增强了系统的抢占性。
+     */
     case IRQ_S_TIMER:
         // "All bits besides SSIP and USIP in the sip register are
         // read-only." -- privileged spec1.9.1, 4.1.4, p59
@@ -125,18 +182,18 @@ void interrupt_handler(struct trapframe *tf)
         /* 时间片轮转： 
         *(1) 设置下一次时钟中断（clock_set_next_event）
         *(2) ticks 计数器自增
-        *(3) 每 TICK_NUM 次中断（如 100 次），进行判断当前是否有进程正在运行，如果有则标记该进程需要被重新调度（current->need_resched）
+        *(3) 每 TICK_NUM 次中断（如 100 次），进行判断当前是否有进程正在运行，
+        如果有则标记该进程需要被重新调度（current->need_resched）
         */
+        
         // (1) 设置下次时钟中断 (保持心跳)
         clock_set_next_event();
 
-        // (2) 计数器（ticks）加一 (更新系统时间
-
-        // (3) 检查时间片是否耗尽
+        // (2) 计数器（ticks）加一 (更新系统时间)
         ticks++;
 
-    // 【核心修复：手动消耗时间片】
-    // 只有这样，schedule 里设置的 time_slice = 10 才会慢慢变成 0
+        // (3) [进程调度逻辑] 检查时间片是否耗尽
+        // 逻辑与 IRQ_U_TIMER 相同，确保无论处于何种特权级，时间片统计都是准确的。
         if (current != NULL) {
             if (current->time_slice > 0) {
                 current->time_slice--;
@@ -172,6 +229,13 @@ void interrupt_handler(struct trapframe *tf)
     }
 }
 void kernel_execve_ret(struct trapframe *tf, uintptr_t kstacktop);
+
+/* * exception_handler - 异常处理函数
+ * 处理所有的同步异常（Exceptions），如系统调用、缺页异常、非法指令等。
+ * 这里的逻辑包含了 Lab5 的两大核心功能：
+ * 1. 系统调用分发 (System Call Dispatch)
+ * 2. 缺页异常处理 (Page Fault Handling for COW)
+ */
 void exception_handler(struct trapframe *tf)
 {
     int ret;
@@ -186,12 +250,21 @@ void exception_handler(struct trapframe *tf)
     case CAUSE_ILLEGAL_INSTRUCTION:
         cprintf("Illegal instruction\n");
         break;
+        
+    /* * [Lab 5 初始化 Hack] 断点异常 (Breakpoint)
+     * 这是一个特殊的逻辑，用于内核线程 (initproc) 启动第一个用户进程 (kernel_execve)。
+     * 因为我们无法在内核态直接使用 ecall 来模仿用户态系统调用，
+     * 所以使用了 ebreak 指令配合寄存器 a7=10 作为暗号。
+     */
     case CAUSE_BREAKPOINT:
         cprintf("Breakpoint\n");
-        if (tf->gpr.a7 == 10)
+        if (tf->gpr.a7 == 10) // 检查是否是特定的 kernel_execve 调用
         {
-            tf->epc += 4;
-            syscall();
+            tf->epc += 4; // 跳过 ebreak 指令，否则返回后会死循环执行 ebreak
+            syscall();    // 执行真正的系统调用逻辑 (sys_exec)
+            
+            // 这是一个极其特殊的返回函数，它不会正常返回。
+            // 它会利用构造好的内核栈，伪造一个用户态的现场，直接 sret 到用户程序的入口。
             kernel_execve_ret(tf, current->kstack + KSTACKSIZE);
         }
         break;
@@ -207,10 +280,15 @@ void exception_handler(struct trapframe *tf)
     case CAUSE_STORE_ACCESS:
         cprintf("Store/AMO access fault\n");
         break;
+        
+    /* * [Lab 5 系统调用] 用户态系统调用 (User Ecall)
+     * 当用户程序执行 `ecall` 指令时触发此异常。
+     */
     case CAUSE_USER_ECALL:
         // cprintf("Environment call from U-mode\n");
-        tf->epc += 4;
-        syscall();
+        tf->epc += 4; // 重要：sepc 指向发生异常的指令 (ecall)。
+                      // 我们希望处理完后返回到 ecall 的下一条指令继续执行，所以 PC+4。
+        syscall();    // 查表调用 sys_fork, sys_exit, sys_write 等
         break;
     case CAUSE_SUPERVISOR_ECALL:
         cprintf("Environment call from S-mode\n");
@@ -223,11 +301,19 @@ void exception_handler(struct trapframe *tf)
     case CAUSE_MACHINE_ECALL:
         cprintf("Environment call from M-mode\n");
         break;
+        
+    /* * [Lab 5 COW 核心机制] 缺页异常处理
+     * 在 Lab 5 之前，缺页通常意味着程序错误 (Segfault)。
+     * 在 Lab 5 中，缺页可能意味着：
+     * 1. 栈空间增长 (Demand Paging)。
+     * 2. 写时复制 (Copy-on-Write) 触发。
+     */
     case CAUSE_FETCH_PAGE_FAULT:
         cprintf("Instruction page fault\n");
-        // 调用 do_pgfault，参数：当前进程mm, 错误原因, 错误地址(tval)
+        // 调用 do_pgfault，这是实现 COW 的关键入口。
+        // do_pgfault 会检查异常地址是否在 VMA 中，并判断是否是 COW 写的只读页。
         if (do_pgfault(current->mm, tf->cause, tf->tval) != 0) {
-            print_trapframe(tf);
+            print_trapframe(tf); // 如果处理失败（真是非法访问），则打印帧并杀进程
             if (current == NULL) {
                 panic("handle_exception: page fault in kernel (current == NULL)");
             }
@@ -237,7 +323,7 @@ void exception_handler(struct trapframe *tf)
 
     case CAUSE_LOAD_PAGE_FAULT:
         cprintf("Load page fault\n");
-        // 调用 do_pgfault
+        // 调用 do_pgfault 处理读缺页（通常是 Demand Paging 刚分配页表项时）
         if (do_pgfault(current->mm, tf->cause, tf->tval) != 0) {
             print_trapframe(tf);
             if (current == NULL) {
@@ -247,9 +333,15 @@ void exception_handler(struct trapframe *tf)
         }
         break;
 
+    /* * [COW 触发点] 写缺页异常 (Store Page Fault)
+     * 当进程尝试写入一个被标记为“只读”但 VMA 标记为“可写”的页面时触发。
+     * 这正是 fork() 后父子进程共享物理页的情况。
+     */
     case CAUSE_STORE_PAGE_FAULT:
         cprintf("Store/AMO page fault\n");
-        // 调用 do_pgfault
+        // 调用 do_pgfault。
+        // 如果是 COW，do_pgfault 会：
+        // 1. 分配新物理页 2. 拷贝内容 3. 修改页表权限为可写 4. 刷新 TLB
         if (do_pgfault(current->mm, tf->cause, tf->tval) != 0) {
             print_trapframe(tf);
             if (current == NULL) {
@@ -268,49 +360,60 @@ static inline void trap_dispatch(struct trapframe *tf)
 {
     if ((intptr_t)tf->cause < 0)
     {
-        // interrupts
+        // interrupts (最高位为1)
         interrupt_handler(tf);
     }
     else
     {
-        // exceptions
+        // exceptions (最高位为0)
         exception_handler(tf);
     }
 }
 
 /* *
- * trap - handles or dispatches an exception/interrupt. if and when trap() returns,
- * the code in kern/trap/trapentry.S restores the old CPU state saved in the
- * trapframe and then uses the iret instruction to return from the exception.
+ * trap - 通用陷阱处理入口
+ * 所有的异常和中断最终都会走到这里。
+ * 这里负责处理“嵌套陷阱”的逻辑，并决定何时进行进程调度。
  * */
 /* 请替换 kern/trap/trap.c 末尾的 trap 函数 */
 void trap(struct trapframe *tf) {
-    // 1. 如果当前没有进程（如刚启动），直接分发中断
+    // 1. 如果当前没有进程（如 OS 启动早期的中断），直接处理，不涉及进程调度
     if (current == NULL) {
         trap_dispatch(tf);
     }
     else {
-        // 2. 保存旧的中断帧
+        // 2. 保存旧的中断帧 (Nested Trap Support)
+        // 这里的逻辑允许在处理中断时再次发生中断（虽然 uCore 简单实现中较少涉及复杂嵌套）
+        // 实际上，current->tf 始终指向当前正在处理的 trapframe，便于 copy_thread 等函数获取上下文。
         struct trapframe *otf = current->tf;
         current->tf = tf;
 
-        // 【关键修复】手动检查 SSTATUS_SPP 位
-        // 如果 SPP 位是 0，说明中断来自用户态 (in_kernel = false)
-        // 如果 SPP 位是 1，说明中断来自内核态 (in_kernel = true)
+        // 【关键逻辑】判断中断来源
+        // 检查 SSTATUS_SPP 位：
+        // 0 -> 用户态 (User Mode)，in_kernel = false
+        // 1 -> 内核态 (Supervisor Mode)，in_kernel = true
         bool in_kernel = (tf->status & SSTATUS_SPP) != 0;
 
+        // 3. 分发处理 (Dispatch)
         trap_dispatch(tf);
 
-        // 3. 恢复旧的中断帧
+        // 4. 恢复旧的中断帧
         current->tf = otf;
 
-        // 4. 只有在用户态产生的中断，且需要调度时，才执行调度
+        // 5. 进程调度决策点 (Scheduling Decision)
+        // 只有当满足以下条件时，才触发调度：
+        // (1) 中断来自用户态 (!in_kernel)。如果内核代码执行中被打断，通常不立即抢占，保证内核原子性。
+        // (2) 调度器标记了需要调度 (need_resched == 1)，这通常是在 interrupt_handler 中时间片耗尽设置的。
         if (!in_kernel) {
-            // 处理进程退出的标记
+            // 检查当前进程是否被标记为正在退出 (PF_EXITING)
+            // 如果是，直接结束它，不再让它回用户态。
             if (current->flags & PF_EXITING) {
                 do_exit(-E_KILLED);
             }
-            // 【核心】时间片用完，执行抢占调度
+            
+            // 【核心】时间片轮转调度的触发点
+            // 如果时间片用完 (need_resched 被置位)，现在可以安全地挂起当前进程，
+            // 切换到下一个 RUNNABLE 进程。
             if (current->need_resched) {
                 schedule();
             }

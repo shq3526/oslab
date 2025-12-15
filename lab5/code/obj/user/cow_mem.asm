@@ -185,7 +185,7 @@ sys_putc(int64_t c) {
 int
 sys_get_free_pages(void) {
     return syscall(SYS_get_free_pages);
-  8000c8:	02000513          	li	a0,32
+  8000c8:	0fa00513          	li	a0,250
   8000cc:	b76d                	j	800076 <syscall>
 
 00000000008000ce <exit>:

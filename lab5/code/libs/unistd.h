@@ -20,7 +20,8 @@
 #define SYS_shmem           22
 #define SYS_putc            30
 #define SYS_pgdir           31
-#define SYS_get_free_pages  32
+#define SYS_get_free_pages  250
+#define SYS_set_cow_attack   251
 
 /* SYS_fork flags */
 #define CLONE_VM            0x00000100  // set if VM shared between processes

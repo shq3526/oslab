@@ -31,10 +31,10 @@ DTB init completed
 
 Special kernel symbols:
   entry  0xc020004a (virtual)
-  etext  0xc02059fc (virtual)
-  edata  0xc02c5988 (virtual)
-  end    0xc02c9e34 (virtual)
-Kernel executable memory footprint: 808KB
+  etext  0xc0205b02 (virtual)
+  edata  0xc02d2968 (virtual)
+  end    0xc02d6e2c (virtual)
+Kernel executable memory footprint: 860KB
 memory management: default_pmm_manager
 physcial memory map:
   memory: 0x08000000, [0x80000000, 0x87ffffff].
@@ -53,6 +53,6 @@ I am 2, print pgdir.
 pgdir pass.
 all user-mode processes have quit.
 init check memory pass.
-kernel panic at kern/process/proc.c:555:
+kernel panic at kern/process/proc.c:602:
     initproc exit.
 
