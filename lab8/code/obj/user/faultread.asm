@@ -516,7 +516,7 @@ Disassembly of section .text:
   800504:	4729                	li	a4,10
   800506:	b5d5                	j	8003ea <vprintfmt+0x156>
   800508:	000aa783          	lw	a5,0(s5)
-  80050c:	46e1                	li	a3,24
+  80050c:	46e5                	li	a3,25
   80050e:	0aa1                	addi	s5,s5,8
   800510:	41f7d71b          	sraiw	a4,a5,0x1f
   800514:	8fb9                	xor	a5,a5,a4

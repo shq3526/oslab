@@ -566,7 +566,7 @@ Disassembly of section .text:
   80055c:	4729                	li	a4,10
   80055e:	b5d5                	j	800442 <vprintfmt+0x156>
   800560:	000aa783          	lw	a5,0(s5)
-  800564:	46e1                	li	a3,24
+  800564:	46e5                	li	a3,25
   800566:	0aa1                	addi	s5,s5,8
   800568:	41f7d71b          	sraiw	a4,a5,0x1f
   80056c:	8fb9                	xor	a5,a5,a4
@@ -711,7 +711,7 @@ Disassembly of section .text:
   8006dc:	eaf78793          	addi	a5,a5,-337 # beaf <open-0x7f4171>
   8006e0:	00f71d63          	bne	a4,a5,8006fa <main+0x54>
   8006e4:	00000517          	auipc	a0,0x0
-  8006e8:	65c50513          	addi	a0,a0,1628 # 800d40 <error_string+0x180>
+  8006e8:	66450513          	addi	a0,a0,1636 # 800d48 <error_string+0x188>
   8006ec:	a0bff0ef          	jal	ra,8000f6 <cprintf>
   8006f0:	60e2                	ld	ra,24(sp)
   8006f2:	6442                	ld	s0,16(sp)
@@ -719,39 +719,39 @@ Disassembly of section .text:
   8006f6:	6105                	addi	sp,sp,32
   8006f8:	8082                	ret
   8006fa:	00000697          	auipc	a3,0x0
-  8006fe:	60e68693          	addi	a3,a3,1550 # 800d08 <error_string+0x148>
+  8006fe:	61668693          	addi	a3,a3,1558 # 800d10 <error_string+0x150>
   800702:	00000617          	auipc	a2,0x0
-  800706:	59e60613          	addi	a2,a2,1438 # 800ca0 <error_string+0xe0>
+  800706:	5a660613          	addi	a2,a2,1446 # 800ca8 <error_string+0xe8>
   80070a:	45c9                	li	a1,18
   80070c:	00000517          	auipc	a0,0x0
-  800710:	5ac50513          	addi	a0,a0,1452 # 800cb8 <error_string+0xf8>
+  800710:	5b450513          	addi	a0,a0,1460 # 800cc0 <error_string+0x100>
   800714:	91dff0ef          	jal	ra,800030 <__panic>
   800718:	00000697          	auipc	a3,0x0
-  80071c:	5c868693          	addi	a3,a3,1480 # 800ce0 <error_string+0x120>
+  80071c:	5d068693          	addi	a3,a3,1488 # 800ce8 <error_string+0x128>
   800720:	00000617          	auipc	a2,0x0
-  800724:	58060613          	addi	a2,a2,1408 # 800ca0 <error_string+0xe0>
+  800724:	58860613          	addi	a2,a2,1416 # 800ca8 <error_string+0xe8>
   800728:	45c5                	li	a1,17
   80072a:	00000517          	auipc	a0,0x0
-  80072e:	58e50513          	addi	a0,a0,1422 # 800cb8 <error_string+0xf8>
+  80072e:	59650513          	addi	a0,a0,1430 # 800cc0 <error_string+0x100>
   800732:	8ffff0ef          	jal	ra,800030 <__panic>
   800736:	00000697          	auipc	a3,0x0
-  80073a:	59268693          	addi	a3,a3,1426 # 800cc8 <error_string+0x108>
+  80073a:	59a68693          	addi	a3,a3,1434 # 800cd0 <error_string+0x110>
   80073e:	00000617          	auipc	a2,0x0
-  800742:	56260613          	addi	a2,a2,1378 # 800ca0 <error_string+0xe0>
+  800742:	56a60613          	addi	a2,a2,1386 # 800ca8 <error_string+0xe8>
   800746:	45c1                	li	a1,16
   800748:	00000517          	auipc	a0,0x0
-  80074c:	57050513          	addi	a0,a0,1392 # 800cb8 <error_string+0xf8>
+  80074c:	57850513          	addi	a0,a0,1400 # 800cc0 <error_string+0x100>
   800750:	8e1ff0ef          	jal	ra,800030 <__panic>
   800754:	00000697          	auipc	a3,0x0
-  800758:	54468693          	addi	a3,a3,1348 # 800c98 <error_string+0xd8>
+  800758:	54c68693          	addi	a3,a3,1356 # 800ca0 <error_string+0xe0>
   80075c:	00000617          	auipc	a2,0x0
-  800760:	54460613          	addi	a2,a2,1348 # 800ca0 <error_string+0xe0>
+  800760:	54c60613          	addi	a2,a2,1356 # 800ca8 <error_string+0xe8>
   800764:	45bd                	li	a1,15
   800766:	00000517          	auipc	a0,0x0
-  80076a:	55250513          	addi	a0,a0,1362 # 800cb8 <error_string+0xf8>
+  80076a:	55a50513          	addi	a0,a0,1370 # 800cc0 <error_string+0x100>
   80076e:	8c3ff0ef          	jal	ra,800030 <__panic>
   800772:	00000517          	auipc	a0,0x0
-  800776:	51650513          	addi	a0,a0,1302 # 800c88 <error_string+0xc8>
+  800776:	51e50513          	addi	a0,a0,1310 # 800c90 <error_string+0xd0>
   80077a:	97dff0ef          	jal	ra,8000f6 <cprintf>
   80077e:	4429                	li	s0,10
   800780:	347d                	addiw	s0,s0,-1

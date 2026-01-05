@@ -549,7 +549,7 @@ Disassembly of section .text:
   800530:	4729                	li	a4,10
   800532:	b5d5                	j	800416 <vprintfmt+0x156>
   800534:	000aa783          	lw	a5,0(s5)
-  800538:	46e1                	li	a3,24
+  800538:	46e5                	li	a3,25
   80053a:	0aa1                	addi	s5,s5,8
   80053c:	41f7d71b          	sraiw	a4,a5,0x1f
   800540:	8fb9                	xor	a5,a5,a4
@@ -723,7 +723,7 @@ Disassembly of section .text:
   8006ee:	85aa                	mv	a1,a0
   8006f0:	8622                	mv	a2,s0
   8006f2:	00000517          	auipc	a0,0x0
-  8006f6:	5ae50513          	addi	a0,a0,1454 # 800ca0 <error_string+0xc8>
+  8006f6:	5b650513          	addi	a0,a0,1462 # 800ca8 <error_string+0xd0>
   8006fa:	9bbff0ef          	jal	ra,8000b4 <cprintf>
   8006fe:	03000593          	li	a1,48
   800702:	8522                	mv	a0,s0
@@ -739,7 +739,7 @@ Disassembly of section .text:
   80071c:	03100713          	li	a4,49
   800720:	86a2                	mv	a3,s0
   800722:	00000617          	auipc	a2,0x0
-  800726:	59660613          	addi	a2,a2,1430 # 800cb8 <error_string+0xe0>
+  800726:	59e60613          	addi	a2,a2,1438 # 800cc0 <error_string+0xe8>
   80072a:	4591                	li	a1,4
   80072c:	0028                	addi	a0,sp,8
   80072e:	f31ff0ef          	jal	ra,80065e <snprintf>
@@ -769,7 +769,7 @@ Disassembly of section .text:
   800768:	8726                	mv	a4,s1
   80076a:	86a2                	mv	a3,s0
   80076c:	00000617          	auipc	a2,0x0
-  800770:	54c60613          	addi	a2,a2,1356 # 800cb8 <error_string+0xe0>
+  800770:	55460613          	addi	a2,a2,1364 # 800cc0 <error_string+0xe8>
   800774:	4591                	li	a1,4
   800776:	0028                	addi	a0,sp,8
   800778:	ee7ff0ef          	jal	ra,80065e <snprintf>
@@ -784,7 +784,7 @@ Disassembly of section .text:
 0000000000800792 <main>:
   800792:	1141                	addi	sp,sp,-16
   800794:	00000517          	auipc	a0,0x0
-  800798:	51c50513          	addi	a0,a0,1308 # 800cb0 <error_string+0xd8>
+  800798:	52450513          	addi	a0,a0,1316 # 800cb8 <error_string+0xe0>
   80079c:	e406                	sd	ra,8(sp)
   80079e:	f45ff0ef          	jal	ra,8006e2 <forktree>
   8007a2:	60a2                	ld	ra,8(sp)

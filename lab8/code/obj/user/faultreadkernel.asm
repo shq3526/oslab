@@ -543,7 +543,7 @@ Disassembly of section .text:
   800546:	4729                	li	a4,10
   800548:	b5d5                	j	80042c <vprintfmt+0x156>
   80054a:	000aa783          	lw	a5,0(s5)
-  80054e:	46e1                	li	a3,24
+  80054e:	46e5                	li	a3,25
   800550:	0aa1                	addi	s5,s5,8
   800552:	41f7d71b          	sraiw	a4,a5,0x1f
   800556:	8fb9                	xor	a5,a5,a4
@@ -668,12 +668,12 @@ Disassembly of section .text:
   800696:	438c                	lw	a1,0(a5)
   800698:	1141                	addi	sp,sp,-16
   80069a:	00000517          	auipc	a0,0x0
-  80069e:	51650513          	addi	a0,a0,1302 # 800bb0 <error_string+0xc8>
+  80069e:	51e50513          	addi	a0,a0,1310 # 800bb8 <error_string+0xd0>
   8006a2:	e406                	sd	ra,8(sp)
   8006a4:	a53ff0ef          	jal	ra,8000f6 <cprintf>
   8006a8:	00000617          	auipc	a2,0x0
-  8006ac:	52860613          	addi	a2,a2,1320 # 800bd0 <error_string+0xe8>
+  8006ac:	53060613          	addi	a2,a2,1328 # 800bd8 <error_string+0xf0>
   8006b0:	459d                	li	a1,7
   8006b2:	00000517          	auipc	a0,0x0
-  8006b6:	52e50513          	addi	a0,a0,1326 # 800be0 <error_string+0xf8>
+  8006b6:	53650513          	addi	a0,a0,1334 # 800be8 <error_string+0x100>
   8006ba:	977ff0ef          	jal	ra,800030 <__panic>

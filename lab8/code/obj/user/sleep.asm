@@ -576,7 +576,7 @@ Disassembly of section .text:
   800568:	4729                	li	a4,10
   80056a:	b5d5                	j	80044e <vprintfmt+0x156>
   80056c:	000aa783          	lw	a5,0(s5)
-  800570:	46e1                	li	a3,24
+  800570:	46e5                	li	a3,25
   800572:	0aa1                	addi	s5,s5,8
   800574:	41f7d71b          	sraiw	a4,a5,0x1f
   800578:	8fb9                	xor	a5,a5,a4
@@ -703,7 +703,7 @@ Disassembly of section .text:
   8006ba:	ec06                	sd	ra,24(sp)
   8006bc:	4401                	li	s0,0
   8006be:	00000917          	auipc	s2,0x0
-  8006c2:	58a90913          	addi	s2,s2,1418 # 800c48 <error_string+0xc8>
+  8006c2:	59290913          	addi	s2,s2,1426 # 800c50 <error_string+0xd0>
   8006c6:	44a9                	li	s1,10
   8006c8:	06400513          	li	a0,100
   8006cc:	af9ff0ef          	jal	ra,8001c4 <sleep>
@@ -733,10 +733,10 @@ Disassembly of section .text:
   80070a:	ab9ff0ef          	jal	ra,8001c2 <gettime_msec>
   80070e:	408505bb          	subw	a1,a0,s0
   800712:	00000517          	auipc	a0,0x0
-  800716:	5ae50513          	addi	a0,a0,1454 # 800cc0 <error_string+0x140>
+  800716:	5b650513          	addi	a0,a0,1462 # 800cc8 <error_string+0x148>
   80071a:	9ddff0ef          	jal	ra,8000f6 <cprintf>
   80071e:	00000517          	auipc	a0,0x0
-  800722:	5ba50513          	addi	a0,a0,1466 # 800cd8 <error_string+0x158>
+  800722:	5c250513          	addi	a0,a0,1474 # 800ce0 <error_string+0x160>
   800726:	9d1ff0ef          	jal	ra,8000f6 <cprintf>
   80072a:	60e2                	ld	ra,24(sp)
   80072c:	6442                	ld	s0,16(sp)
@@ -744,11 +744,11 @@ Disassembly of section .text:
   800730:	6105                	addi	sp,sp,32
   800732:	8082                	ret
   800734:	00000697          	auipc	a3,0x0
-  800738:	52c68693          	addi	a3,a3,1324 # 800c60 <error_string+0xe0>
+  800738:	53468693          	addi	a3,a3,1332 # 800c68 <error_string+0xe8>
   80073c:	00000617          	auipc	a2,0x0
-  800740:	55c60613          	addi	a2,a2,1372 # 800c98 <error_string+0x118>
+  800740:	56460613          	addi	a2,a2,1380 # 800ca0 <error_string+0x120>
   800744:	45dd                	li	a1,23
   800746:	00000517          	auipc	a0,0x0
-  80074a:	56a50513          	addi	a0,a0,1386 # 800cb0 <error_string+0x130>
+  80074a:	57250513          	addi	a0,a0,1394 # 800cb8 <error_string+0x138>
   80074e:	8e3ff0ef          	jal	ra,800030 <__panic>
   800752:	f61ff0ef          	jal	ra,8006b2 <sleepy>
